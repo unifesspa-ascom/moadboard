@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f8f7f2">
+<title>Moodboard · Calourada 2027 · Unifesspa</title>
+<style>
+:root{font:16px/1.45 system-ui,sans-serif;color:#20211c;background:#f8f7f2;--ink:#252620;--line:#deddd3;--accent:#dbf757;--muted:#626357}
+*{box-sizing:border-box}
+body{margin:0}
+button,input{font:inherit}
+button{cursor:pointer;background:#fffefa;color:var(--ink);padding:.48rem .8rem;border:1px solid var(--line);border-radius:8px;font-size:.875rem;font-weight:650}
+button:hover{background:#eeeee4}
+button:focus-visible,input:focus-visible{outline:2px solid #556900;outline-offset:3px}
+.primary{background:var(--accent);border-color:var(--ink);box-shadow:2px 2px var(--ink)}
+.primary:hover{background:#cbeb34}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px clamp(16px,5vw,72px);background:#fffefa;border-bottom:1px solid var(--line)}
+.brand,.actions,.tabs,.zoom,.url-row,.edit-actions{display:flex;align-items:center;gap:8px}
+.brand strong{display:block;font-size:1.18rem;line-height:1.15;letter-spacing:-.04em}
+.brand small,.eyebrow{font-size:.75rem;letter-spacing:.13em;font-weight:800}
+.period{color:#627400}
+.mark{display:grid;place-items:center;background:var(--accent);width:40px;height:40px;border:1px solid var(--ink);border-radius:10px;font-size:26px}
+.intro,main{max-width:1550px;margin:auto;padding-inline:clamp(16px,5vw,72px)}
+.intro{display:flex;justify-content:space-between;align-items:end;gap:18px;padding-block:36px 24px}
+.eyebrow{margin:0;color:var(--muted)}
+.eyebrow span{color:#708400;margin:0 .2rem}
+h1{font-size:clamp(2.5rem,7vw,5.3rem);line-height:1.03;letter-spacing:-.085em;margin:.35rem 0}
+h1 em{font-family:Georgia,serif;font-weight:400;letter-spacing:-.09em}
+.intro p:last-child{margin:.6rem 0 0;color:var(--muted)}
+#add{flex:none;margin-bottom:3px}
+.toolbar{display:flex;align-items:center;gap:12px;padding:8px;background:#fffefa;border:1px solid var(--line);border-radius:12px 12px 0 0}
+.tabs{gap:3px;background:#eeeee6;border-radius:8px;padding:3px}
+.tabs button{background:transparent;border-color:transparent}
+.tabs [aria-pressed=true]{background:#fff;border-color:var(--line)}
+#count,footer{font-size:.82rem;color:var(--muted)}
+.zoom{margin-left:auto;gap:4px}
+.zoom button{min-width:34px;padding-inline:6px}
+#reset{min-width:56px}
+#board{height:max(390px,calc(100dvh - 325px));position:relative;overflow:hidden;border:1px solid var(--line);border-top:0;background-color:#f0efe7;background-image:radial-gradient(#c3c1b3 1px,transparent 1px);background-size:19px 19px;touch-action:none;cursor:grab}
+#board.panning{cursor:grabbing}
+#board.over{box-shadow:inset 0 0 0 4px #809900}
+#layer{position:absolute;inset:0;transform-origin:0 0;pointer-events:none}
+#empty{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;padding:18px;pointer-events:none}
+#empty[hidden],#zoom[hidden]{display:none}
+#empty h2{font-size:clamp(1.25rem,3vw,1.75rem);letter-spacing:-.05em;margin:0}
+#empty p{color:var(--muted);margin:.5rem 0 1rem}
+#empty button{pointer-events:auto}
+.sticker{width:112px;height:90px;position:relative;margin-bottom:18px}
+.sticker>*{position:absolute;display:grid;place-items:center;width:56px;height:69px;border:1px solid var(--ink);border-radius:7px}
+.sticker i{left:8px;top:13px;background:#d4c6f7;transform:rotate(-22deg)}
+.sticker span{right:4px;top:14px;background:repeating-linear-gradient(45deg,#fffefa 0 5px,#dddace 5px 6px);transform:rotate(22deg)}
+.sticker b{left:30px;top:3px;z-index:1;background:var(--accent);font-size:35px;transform:rotate(-4deg)}
+kbd{font:inherit;font-size:.78em;border:1px solid #cecdc1;border-radius:4px;background:#fffefa;padding:.1em .33em}
+footer{display:flex;justify-content:space-between;gap:12px;padding:.55rem .1rem}
+.card{position:absolute;pointer-events:auto;min-width:0;background:#fffefa;border:1px solid #bdbcae;border-radius:9px;padding:6px;box-shadow:0 3px 10px #25262019;cursor:grab;user-select:none;touch-action:none}
+.card:hover,.card:focus-within{border-color:#627400}
+.card.dragging{z-index:9999!important}
+.card.target{outline:3px solid #829900}
+.picture{position:relative;width:100%;overflow:hidden;border-radius:5px;background:#eae9df}
+.picture .crop{position:absolute;top:50%;left:50%;overflow:hidden}
+.picture img{position:absolute;display:block;max-width:none;pointer-events:none}
+.card-bar{display:flex;align-items:center;gap:4px;margin-top:5px}
+.card-bar span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;padding-inline:3px}
+.card-bar button{padding:.15rem .4rem}
+.resize{position:absolute;right:-6px;bottom:-6px;width:15px;height:15px;background:var(--accent);border:1px solid var(--ink);border-radius:50%;cursor:nwse-resize;opacity:0}
+.card:hover .resize,.resize:focus-visible,.card:focus-within .resize{opacity:1}
+#board.grid{overflow:auto;cursor:auto;touch-action:pan-y}
+.grid #layer{position:relative;display:flex;gap:14px;padding:14px;min-height:100%}
+.column{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px}
+.grid .card{position:relative;width:100%;touch-action:pan-y}
+.grip{touch-action:none;cursor:grab}
+dialog{width:min(480px,calc(100% - 30px));max-height:90dvh;border:1px solid var(--ink);border-radius:14px;padding:20px;background:#fffefa;color:var(--ink);box-shadow:5px 5px var(--ink)}
+dialog::backdrop{background:#20211c85}
+.dialog-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+.dialog-head h2{margin:0;letter-spacing:-.055em}
+dialog p{font-size:.875rem;color:var(--muted)}
+label{display:block;font-size:.875rem;font-weight:650}
+input:not([type=range]){width:100%;min-width:0;padding:.48rem;border:1px solid #bdbcae;border-radius:7px;background:white}
+input[type=range]{display:block;width:100%;accent-color:#637700}
+#sliders{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+#preview{display:grid;place-items:center;background:#eeeee6;border-radius:8px;padding:10px;margin-bottom:10px}
+.edit-actions{flex-wrap:wrap}
+#addError:empty{display:none}
+@media(max-width:630px){header{padding-block:10px}.intro{align-items:start;flex-direction:column;padding-block:22px 15px}.toolbar{gap:6px;flex-wrap:wrap}#count{margin-left:auto}.zoom{margin-left:0}#board{height:max(370px,calc(100dvh - 340px))}#hint{display:none}.resize{opacity:1}.brand small{display:none}}
+</style>
+
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark" aria-hidden="true">✳</span><div><strong>moodboard<span class="period">.</span></strong><small>UNIFESSPA / PROJETO DE ESTAMPA</small></div></div>
+  <div class="actions">
+    <button id="backup" title="Exportar uma cópia do painel">Exportar</button>
+    <button id="restore" title="Importar referências de uma cópia do painel">Importar</button>
+  </div>
+</header>
+<section class="intro" aria-labelledby="title">
+  <div><p class="eyebrow">DIREÇÃO VISUAL <span> / </span> UNIFESSPA</p><h1 id="title">Calourada <em>2027</em></h1><p>Um painel de referências para a estampa.</p></div>
+  <button type="button" id="add" class="primary">＋ Adicionar imagem</button>
+</section>
+<main>
+  <div class="toolbar">
+    <div class="tabs" aria-label="Visualização">
+      <button id="free" aria-pressed="true">▧ Painel livre</button>
+      <button id="grid" aria-pressed="false">▥ Colunas</button>
+    </div>
+    <span id="count">0 referências</span>
+    <div id="zoom" class="zoom" aria-label="Controles do painel">
+      <button id="out" aria-label="Diminuir zoom">−</button><button id="reset" aria-label="Restaurar zoom e posição">100%</button><button id="in" aria-label="Aumentar zoom">+</button><button id="fit" title="Enquadrar referências" aria-label="Enquadrar referências">⛶</button>
+    </div>
+  </div>
+  <div id="board" aria-label="Painel de referências">
+    <div id="layer"></div>
+    <div id="empty">
+      <div class="sticker" aria-hidden="true"><i></i><b>✳</b><span></span></div>
+      <h2>Comece pelo que chama atenção.</h2>
+      <p>Cole com <kbd>Ctrl</kbd> + <kbd>V</kbd> ou arraste suas imagens para cá.</p>
+      <button id="emptyAdd">＋ Adicionar referências</button>
+    </div>
+  </div>
+  <footer><span id="status" role="status">Salvando neste navegador</span><span id="hint">Arraste o fundo para navegar pelo painel</span></footer>
+</main>
+<dialog id="addDialog">
+  <div class="dialog-head"><h2>Adicionar imagem</h2><button data-close aria-label="Fechar">×</button></div>
+  <button id="upload" class="primary">Escolher arquivos</button>
+  <p>Você também pode colar uma imagem com Ctrl+V ou ⌘V.</p>
+  <form id="urlForm"><label for="url">Link direto da imagem</label><div class="url-row"><input id="url" type="url" placeholder="https://…" required><button>Adicionar</button></div></form>
+  <p id="addError" role="status"></p>
+</dialog>
+<dialog id="editDialog">
+  <div class="dialog-head"><h2>Editar referência</h2><button data-close aria-label="Fechar">×</button></div>
+  <div id="preview"></div>
+  <form id="editForm">
+    <label>Legenda<input id="caption" maxlength="120"></label>
+    <div id="sliders">
+      <label>Esquerda<input type="range" id="left" min="0" max="95" value="0"></label>
+      <label>Direita<input type="range" id="right" min="0" max="95" value="0"></label>
+      <label>Topo<input type="range" id="top" min="0" max="95" value="0"></label>
+      <label>Base<input type="range" id="bottom" min="0" max="95" value="0"></label>
+    </div>
+    <div class="edit-actions"><button type="button" id="clearCrop">Limpar recorte</button><button type="button" id="rotate">Girar 90°</button><button class="primary">Salvar</button></div>
+  </form>
+</dialog>
+<input id="files" type="file" accept="image/*" multiple hidden>
+<input id="backupFile" type="file" accept=".json,application/json" hidden>
+<script>
+'use strict';
+
+const byId = id => document.getElementById(id);
+const board = byId('board');
+const layer = byId('layer');
+const addDialog = byId('addDialog');
+const editDialog = byId('editDialog');
+const edges = ['left', 'right', 'top', 'bottom'];
+const center = () => ({ x: board.clientWidth / 2, y: board.clientHeight / 2 });
+const bounded = (value, min, max) => Math.max(min, Math.min(max, value));
+const blankCrop = () => [0, 0, 0, 0];
+let items = [];
+let mode = 'free';
+let scale = 1;
+let offset = { x: 0, y: 0 };
+let editing;
+let ready = false;
+let gesture;
+let storage;
+
+function announce(message) {
+  byId('status').textContent = message;
+}
+
+function openStorage() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('calourada-moodboard', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('state');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
+async function start() {
+  try {
+    storage = await openStorage();
+    const saved = await new Promise((resolve, reject) => {
+      const request = storage.transaction('state').objectStore('state').get('board');
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    if (saved) ({ items, mode, scale, offset } = saved);
+    announce('Salvo neste navegador');
+  } catch {
+    announce('Armazenamento indisponível. Exporte uma cópia para guardar o painel.');
+  } finally {
+    ready = true;
+    render();
+  }
+}
+
+function save() {
+  if (!storage) return;
+  announce('Salvando neste navegador…');
+  try {
+    const transaction = storage.transaction('state', 'readwrite');
+    transaction.objectStore('state').put({ items, mode, scale, offset }, 'board');
+    transaction.oncomplete = () => announce('Salvo neste navegador');
+    transaction.onabort = () => announce('Falha ao salvar. Exporte uma cópia para guardar o painel.');
+  } catch {
+    announce('Falha ao salvar. Exporte uma cópia para guardar o painel.');
+  }
+}
+
+function proportions(item) {
+  const [left, right, top, bottom] = item.crop;
+  const width = 100 - left - right;
+  const height = 100 - top - bottom;
+  const ratio = item.ratio * width / height;
+  return { width, height, ratio, display: item.angle % 180 ? 1 / ratio : ratio };
+}
+
+function picture(item) {
+  const { width, height, ratio, display } = proportions(item);
+  const [left, , top] = item.crop;
+  const frame = document.createElement('div');
+  frame.className = 'picture';
+  frame.style.aspectRatio = display;
+  const crop = document.createElement('div');
+  crop.className = 'crop';
+  const sideways = item.angle % 180;
+  crop.style.width = sideways ? (100 * ratio) + '%' : '100%';
+  crop.style.height = sideways ? (100 / ratio) + '%' : '100%';
+  crop.style.transform = 'translate(-50%, -50%) rotate(' + item.angle + 'deg)';
+  const image = document.createElement('img');
+  image.alt = item.caption || 'Referência visual';
+  image.draggable = false;
+  image.style.width = (10000 / width) + '%';
+  image.style.height = (10000 / height) + '%';
+  image.style.left = (-100 * left / width) + '%';
+  image.style.top = (-100 * top / height) + '%';
+  image.src = item.src;
+  crop.append(image);
+  frame.append(crop);
+  return frame;
+}
+
+function button(label, title, action) {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.textContent = label;
+  element.title = title;
+  element.setAttribute('aria-label', title);
+  element.onclick = action;
+  return element;
+}
+
+function card(item, index) {
+  const element = document.createElement('article');
+  element.className = 'card';
+  element.dataset.id = item.id;
+  element.append(picture(item));
+  const bar = document.createElement('div');
+  bar.className = 'card-bar';
+  const label = document.createElement('span');
+  label.textContent = item.caption || 'Sem legenda';
+  bar.append(label);
+  if (mode === 'grid') {
+    const grip = button('⠿', 'Arrastar para reordenar. Use as setas para mover pelo teclado.');
+    grip.className = 'grip';
+    grip.onkeydown = event => {
+      const change = { ArrowUp: -1, ArrowLeft: -1, ArrowDown: 1, ArrowRight: 1 }[event.key];
+      if (!change) return;
+      event.preventDefault();
+      const next = bounded(index + change, 0, items.length - 1);
+      if (next === index) return;
+      items.splice(index, 1);
+      items.splice(next, 0, item);
+      save();
+      render();
+      layer.querySelector('[data-id="' + item.id + '"] .grip').focus();
+    };
+    bar.prepend(grip);
+  }
+  bar.append(button('✎', 'Editar referência', () => openEditor(item)));
+  bar.append(button('×', 'Remover referência', () => {
+    if (!confirm('Remover esta referência do painel?')) return;
+    items = items.filter(entry => entry !== item);
+    render();
+    save();
+  }));
+  element.append(bar);
+  if (mode === 'free') {
+    place(element, item);
+    element.style.zIndex = item.z;
+    const handle = button('', 'Redimensionar. Use as setas para ajustar pelo teclado.');
+    handle.className = 'resize';
+    handle.onkeydown = event => {
+      const change = { ArrowLeft: -10, ArrowDown: -10, ArrowRight: 10, ArrowUp: 10 }[event.key];
+      if (!change) return;
+      event.preventDefault();
+      item.width = bounded(item.width + change, 100, 1800);
+      place(element, item);
+      save();
+    };
+    element.append(handle);
+  }
+  return element;
+}
+
+function place(element, item) {
+  Object.assign(element.style, {
+    left: item.x + 'px', top: item.y + 'px', width: item.width + 'px'
+  });
+}
+
+function positionLayer() {
+  layer.style.transform = mode === 'free'
+    ? 'translate(' + offset.x + 'px, ' + offset.y + 'px) scale(' + scale + ')' : '';
+  byId('reset').textContent = Math.round(scale * 100) + '%';
+  board.style.backgroundPosition = mode === 'free' ? offset.x + 'px ' + offset.y + 'px' : '';
+}
+
+function render() {
+  const grid = mode === 'grid';
+  board.classList.toggle('grid', grid);
+  byId('free').setAttribute('aria-pressed', String(!grid));
+  byId('grid').setAttribute('aria-pressed', String(grid));
+  byId('zoom').hidden = grid;
+  byId('empty').hidden = items.length > 0;
+  byId('count').textContent = items.length + (items.length === 1 ? ' referência' : ' referências');
+  byId('hint').textContent = grid ? 'Arraste pelo ícone ⠿ para reordenar' : 'Arraste o fundo para navegar pelo painel';
+  layer.replaceChildren();
+  if (grid) {
+    const count = bounded(Math.floor(board.clientWidth / 240), 1, 5);
+    const heights = Array(count).fill(0);
+    const columns = heights.map(() => {
+      const column = document.createElement('div');
+      column.className = 'column';
+      layer.append(column);
+      return column;
+    });
+    items.forEach((item, index) => {
+      const target = heights.indexOf(Math.min(...heights));
+      heights[target] += 60 + (board.clientWidth / count) / proportions(item).display;
+      columns[target].append(card(item, index));
+    });
+  } else {
+    items.forEach((item, index) => layer.append(card(item, index)));
+  }
+  positionLayer();
+}
+
+function setMode(value) {
+  if (!ready || value === mode) return;
+  mode = value;
+  board.scrollTop = 0;
+  render();
+  save();
+}
+
+function zoom(factor, point = center()) {
+  if (!ready || mode !== 'free') return;
+  const next = bounded(scale * factor, .1, 5);
+  offset = {
+    x: point.x - (point.x - offset.x) * next / scale,
+    y: point.y - (point.y - offset.y) * next / scale
+  };
+  scale = next;
+  positionLayer();
+}
+
+function fit() {
+  if (!items.length) return;
+  const left = Math.min(...items.map(item => item.x));
+  const top = Math.min(...items.map(item => item.y));
+  const right = Math.max(...items.map(item => item.x + item.width));
+  const bottom = Math.max(...items.map(item => item.y + item.width / proportions(item).display + 38));
+  scale = bounded(Math.min((board.clientWidth - 48) / (right - left), (board.clientHeight - 48) / (bottom - top)), .1, 2);
+  const point = center();
+  offset = { x: point.x - scale * (left + right) / 2, y: point.y - scale * (top + bottom) / 2 };
+  positionLayer();
+  save();
+}
+
+function openAdd() {
+  byId('addError').textContent = '';
+  if (ready && !addDialog.open) addDialog.showModal();
+}
+
+function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => image.naturalWidth && image.naturalHeight
+      ? resolve(image.naturalWidth / image.naturalHeight)
+      : reject(new Error('Imagem inválida'));
+    image.onerror = () => reject(new Error('Não foi possível abrir a imagem'));
+    image.src = src;
+  });
+}
+
+async function imageSource(source) {
+  if (typeof source !== 'string') return readFile(source);
+  const url = new URL(source);
+  if (!['https:', 'http:'].includes(url.protocol)) throw new Error('URL inválida');
+  // Keep a local copy when the image host allows cross-origin reads.
+  try {
+    const response = await fetch(url.href, { signal: AbortSignal.timeout(5000), credentials: 'omit' });
+    if (response.ok && response.headers.get('content-type')?.startsWith('image/')) {
+      return readFile(await response.blob());
+    }
+  } catch {
+    // An image may still be displayable as a direct link.
+  }
+  return url.href;
+}
+
+async function addSources(sources, dropPoint) {
+  if (!ready || !sources.length) return 0;
+  const loaded = await Promise.allSettled(sources.map(async source => {
+    const src = await imageSource(source);
+    const ratio = await loadImage(src);
+    const caption = typeof source === 'string' ? '' : source.name.replace(/\.[^.]+$/, '').slice(0, 120);
+    return { src, ratio, caption };
+  }));
+  const point = dropPoint || { x: Math.min(32, board.clientWidth / 10), y: Math.min(32, board.clientHeight / 10) };
+  const width = bounded(Math.min(240, board.clientWidth - 48) / scale, 100, 1800);
+  let count = 0;
+  for (const result of loaded) {
+    if (result.status !== 'fulfilled') continue;
+    const slot = dropPoint ? count : items.length;
+    const columns = Math.max(1, Math.floor((board.clientWidth - point.x) / (width * scale + 24)));
+    const x = (point.x - offset.x + (dropPoint ? slot * 22 : slot % columns * (width * scale + 24))) / scale;
+    const y = (point.y - offset.y + (dropPoint ? slot * 22 : (Math.floor(slot / columns) % 4) * 68)) / scale;
+    items.push({
+      ...result.value, id: crypto.randomUUID(), width, x, y,
+      z: items.reduce((highest, item) => Math.max(highest, item.z), 0) + 1, crop: blankCrop(), angle: 0
+    });
+    count++;
+  }
+  if (count) {
+    render();
+    save();
+  }
+  return count;
+}
+
+async function addFiles(files, point) {
+  const images = Array.from(files).filter(file => file.type.startsWith('image/') || !file.type);
+  const count = await addSources(images, point);
+  if (count && addDialog.open) addDialog.close();
+  if (count < files.length) alert('Alguns arquivos não puderam ser abertos como imagem.');
+}
+
+function openEditor(item) {
+  editing = { item, draft: { ...item, crop: [...item.crop] } };
+  byId('caption').value = item.caption;
+  updatePreview();
+  editDialog.showModal();
+}
+
+function updatePreview() {
+  const { draft } = editing;
+  edges.forEach((edge, index) => {
+    const slider = byId(edge);
+    slider.max = 95 - draft.crop[index ^ 1];
+    slider.value = draft.crop[index];
+  });
+  const preview = picture(draft);
+  preview.style.width = Math.min(340, 195 * proportions(draft).display) + 'px';
+  preview.style.maxWidth = '100%';
+  byId('preview').replaceChildren(preview);
+}
+
+function beginGesture(event) {
+  if (!ready || gesture || event.button !== 0) return;
+  const element = event.target.closest('.card');
+  const grip = event.target.closest('.grip');
+  const resize = event.target.closest('.resize');
+  if (mode === 'grid' && !grip) return;
+  if (event.target.closest('button') && !grip && !resize) return;
+  const item = element && items.find(entry => entry.id === element.dataset.id);
+  gesture = {
+    id: event.pointerId, element, item, resize, x: event.clientX, y: event.clientY,
+    origin: item ? { x: item.x, y: item.y, width: item.width } : { ...offset }
+  };
+  // Capture on the original control so clicks and keyboard focus still work.
+  event.target.setPointerCapture(event.pointerId);
+}
+
+function moveGesture(event) {
+  if (gesture?.id !== event.pointerId) return;
+  const { item, element, origin, resize } = gesture;
+  const dx = event.clientX - gesture.x;
+  const dy = event.clientY - gesture.y;
+  if (!gesture.moved && Math.hypot(dx, dy) < 4) return;
+  gesture.moved = true;
+  if (mode === 'grid') {
+    element.classList.add('dragging');
+    element.style.pointerEvents = 'none';
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.card');
+    element.style.pointerEvents = '';
+    gesture.target?.classList.remove('target');
+    gesture.target = target && target !== element ? target : null;
+    gesture.target?.classList.add('target');
+  } else if (item) {
+    element.classList.add('dragging');
+    if (resize) {
+      item.width = bounded(origin.width + dx / scale, 100, 1800);
+    } else {
+      item.x = origin.x + dx / scale;
+      item.y = origin.y + dy / scale;
+    }
+    place(element, item);
+  } else {
+    board.classList.add('panning');
+    offset = { x: origin.x + dx, y: origin.y + dy };
+    positionLayer();
+  }
+}
+
+function endGesture(event) {
+  if (gesture?.id !== event.pointerId) return;
+  const { item, element, target, moved, resize } = gesture;
+  gesture = null;
+  element?.classList.remove('dragging');
+  target?.classList.remove('target');
+  board.classList.remove('panning');
+  if (!moved) return;
+  if (mode === 'grid' && target && event.type === 'pointerup') {
+    const index = items.findIndex(entry => entry.id === target.dataset.id);
+    items.splice(items.indexOf(item), 1);
+    items.splice(index, 0, item);
+    render();
+  }
+  if (mode === 'free' && item && !resize) {
+    item.z = items.reduce((highest, entry) => Math.max(highest, entry.z), 0) + 1;
+    element.style.zIndex = item.z;
+  }
+  save();
+}
+
+byId('add').onclick = openAdd;
+byId('emptyAdd').onclick = openAdd;
+byId('upload').onclick = () => byId('files').click();
+byId('files').onchange = event => {
+  const files = Array.from(event.target.files);
+  event.target.value = '';
+  void addFiles(files);
+};
+byId('free').onclick = () => setMode('free');
+byId('grid').onclick = () => setMode('grid');
+byId('in').onclick = () => { zoom(1.25); save(); };
+byId('out').onclick = () => { zoom(.8); save(); };
+byId('fit').onclick = fit;
+byId('reset').onclick = () => {
+  scale = 1;
+  offset = { x: 0, y: 0 };
+  positionLayer();
+  save();
+};
+document.querySelectorAll('[data-close]').forEach(control => {
+  control.onclick = () => control.closest('dialog').close();
+});
+
+byId('urlForm').onsubmit = async event => {
+  event.preventDefault();
+  const submit = event.submitter;
+  const input = byId('url');
+  submit.disabled = true;
+  byId('addError').textContent = 'Carregando imagem…';
+  try {
+    const count = await addSources([input.value.trim()]);
+    if (count) {
+      input.value = '';
+      addDialog.close();
+    } else {
+      byId('addError').textContent = 'Não foi possível abrir a imagem. Confira se o link aponta diretamente para ela.';
+    }
+  } finally {
+    submit.disabled = false;
+  }
+};
+document.addEventListener('paste', event => {
+  if (!ready || editDialog.open) return;
+  const files = Array.from(event.clipboardData.files);
+  if (files.some(file => file.type.startsWith('image/'))) {
+    event.preventDefault();
+    void addFiles(files);
+    return;
+  }
+  if (event.target.closest('input, textarea, [contenteditable]')) return;
+  const link = event.clipboardData.getData('text/plain').trim();
+  if (!/^https?:\/\/\S+$/i.test(link)) return;
+  event.preventDefault();
+  openAdd();
+  byId('url').value = link;
+  byId('urlForm').requestSubmit(byId('urlForm').querySelector('button'));
+});
+
+board.ondragover = event => {
+  event.preventDefault();
+  board.classList.add('over');
+};
+board.ondragleave = event => {
+  if (!board.contains(event.relatedTarget)) board.classList.remove('over');
+};
+board.ondrop = event => {
+  event.preventDefault();
+  board.classList.remove('over');
+  const bounds = board.getBoundingClientRect();
+  const point = mode === 'free' ? { x: event.clientX - bounds.left, y: event.clientY - bounds.top } : undefined;
+  if (event.dataTransfer.files.length) {
+    void addFiles(event.dataTransfer.files, point);
+  } else {
+    const link = event.dataTransfer.getData('text/uri-list').split('\n').find(line => /^https?:/i.test(line.trim()));
+    if (link) void addSources([link.trim()], point).then(count => {
+      if (!count) announce('Não foi possível abrir o link arrastado.');
+    });
+  }
+};
+board.addEventListener('pointerdown', beginGesture);
+board.addEventListener('pointermove', moveGesture);
+board.addEventListener('pointerup', endGesture);
+board.addEventListener('pointercancel', endGesture);
+let wheelSave;
+board.addEventListener('wheel', event => {
+  if (mode !== 'free') return;
+  event.preventDefault();
+  if (event.ctrlKey || event.metaKey) {
+    const rect = board.getBoundingClientRect();
+    zoom(Math.exp(-event.deltaY * .005), { x: event.clientX - rect.left, y: event.clientY - rect.top });
+  } else {
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? board.clientHeight : 1;
+    offset.x -= event.deltaX * unit;
+    offset.y -= event.deltaY * unit;
+    positionLayer();
+  }
+  clearTimeout(wheelSave);
+  wheelSave = setTimeout(save, 180);
+}, { passive: false });
+
+edges.forEach((edge, index) => {
+  byId(edge).oninput = event => {
+    editing.draft.crop[index] = Number(event.target.value);
+    updatePreview();
+  };
+});
+byId('clearCrop').onclick = () => {
+  editing.draft.crop = blankCrop();
+  updatePreview();
+};
+byId('rotate').onclick = () => {
+  editing.draft.angle = (editing.draft.angle + 90) % 360;
+  updatePreview();
+};
+byId('editForm').onsubmit = event => {
+  event.preventDefault();
+  editing.draft.caption = byId('caption').value.trim();
+  Object.assign(editing.item, editing.draft);
+  editDialog.close();
+  render();
+  save();
+};
+
+byId('backup').onclick = () => {
+  if (!ready) return;
+  const blob = new Blob([JSON.stringify({ version: 1, items })], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'moodboard-calourada-2027.json';
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
+function validItem(item) {
+  return item && typeof item.src === 'string' && /^(https?:\/\/|data:image\/)/i.test(item.src)
+    && typeof item.caption === 'string' && ['x', 'y', 'z', 'width', 'ratio'].every(key => Number.isFinite(item[key]))
+    && item.width > 0 && item.ratio > 0 && [0, 90, 180, 270].includes(item.angle)
+    && Array.isArray(item.crop) && item.crop.length === 4
+    && item.crop.every(value => Number.isInteger(value) && value >= 0 && value <= 95)
+    && item.crop[0] + item.crop[1] <= 95 && item.crop[2] + item.crop[3] <= 95;
+}
+
+byId('restore').onclick = () => { if (ready) byId('backupFile').click(); };
+byId('backupFile').onchange = async event => {
+  const [file] = event.target.files;
+  event.target.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (data.version !== 1 || !Array.isArray(data.items) || !data.items.every(validItem)) {
+      throw new Error('Formato inválido');
+    }
+    const highest = items.reduce((value, item) => Math.max(value, item.z), 0);
+    const stacking = [...data.items].sort((a, b) => a.z - b.z);
+    items = items.concat(data.items.map(item => ({
+      src: item.src, caption: item.caption.slice(0, 120), ratio: item.ratio, crop: item.crop, angle: item.angle,
+      x: item.x, y: item.y, width: item.width, id: crypto.randomUUID(), z: highest + stacking.indexOf(item) + 1
+    })));
+    render();
+    if (mode === 'free') fit();
+    else save();
+  } catch {
+    alert('Não foi possível importar. Escolha um arquivo exportado pelo moodboard.');
+  }
+};
+
+new ResizeObserver(() => {
+  if (ready && mode === 'grid' && !gesture) render();
+}).observe(board);
+void start();
+</script>
+</body>
+</html>
