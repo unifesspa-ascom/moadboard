@@ -300,26 +300,46 @@ async function start() {
     openStorage().then(db => { storage = db; })
   ]);
   const shared = ghResult.status === 'fulfilled' ? ghResult.value : null;
-  if (shared !== null) {
-    ({ items, mode, scale, offset } = shared);
-    const pat = localStorage.getItem('gh-pat');
-    announce(pat ? 'Sincronizado com GitHub ✓' : 'Painel compartilhado. Configure o token para editar.');
-  } else if (storage) {
+
+  // Lê IndexedDB (se disponível) para possível migração
+  let localSaved = null;
+  if (storage) {
     try {
-      const saved = await new Promise((resolve, reject) => {
+      localSaved = await new Promise((resolve, reject) => {
         const req = storage.transaction('state').objectStore('state').get('board');
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
       });
-      if (saved) {
-        ({ items, mode, scale, offset } = saved);
-        announce('Carregado localmente (GitHub indisponível)');
-      } else {
-        announce('Painel vazio. Configure o token GitHub para habilitar o compartilhamento.');
-      }
-    } catch {
-      announce('Armazenamento local indisponível.');
+    } catch {}
+  }
+
+  const ghEmpty = shared !== null && shared.items && shared.items.length === 0;
+  const localHasItems = localSaved && localSaved.items && localSaved.items.length > 0;
+
+  if (shared !== null && !ghEmpty) {
+    // GitHub tem conteúdo — usa ele
+    ({ items, mode, scale, offset } = shared);
+    const pat = localStorage.getItem('gh-pat');
+    announce(pat ? 'Sincronizado com GitHub ✓' : 'Painel compartilhado. Configure o token para editar.');
+  } else if (ghEmpty && localHasItems) {
+    // GitHub está vazio mas há conteúdo local — migra automaticamente
+    ({ items, mode, scale, offset } = localSaved);
+    announce('Restaurando fotos do navegador…');
+    const pat = localStorage.getItem('gh-pat');
+    if (pat) {
+      const migrateState = { version: 1, items, mode, scale, offset };
+      const ok = await pushToGitHub(migrateState);
+      announce(ok ? 'Fotos restauradas e sincronizadas com GitHub ✓' : 'Fotos restauradas localmente (erro ao sincronizar com GitHub).');
+    } else {
+      announce('Fotos restauradas. Configure o token GitHub para sincronizar.');
     }
+  } else if (shared !== null) {
+    // GitHub acessível mas vazio, sem dados locais
+    const pat = localStorage.getItem('gh-pat');
+    announce(pat ? 'Painel vazio. Adicione fotos para começar.' : 'Painel compartilhado. Configure o token para editar.');
+  } else if (localSaved) {
+    ({ items, mode, scale, offset } = localSaved);
+    announce('Carregado localmente (GitHub indisponível)');
   } else {
     announce('Sem armazenamento disponível. Exporte uma cópia para guardar o painel.');
   }
