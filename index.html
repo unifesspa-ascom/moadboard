@@ -90,6 +90,7 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
 <header>
   <div class="brand"><span class="mark" aria-hidden="true">✳</span><div><strong>moodboard<span class="period">.</span></strong><small>UNIFESSPA / PROJETO DE ESTAMPA</small></div></div>
   <div class="actions">
+    <button id="syncBtn" title="Configurar sincronização com GitHub">⚙ GitHub</button>
     <button id="backup" title="Exportar uma cópia do painel">Exportar</button>
     <button id="restore" title="Importar referências de uma cópia do painel">Importar</button>
   </div>
@@ -118,7 +119,7 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
       <button id="emptyAdd">＋ Adicionar referências</button>
     </div>
   </div>
-  <footer><span id="status" role="status">Salvando neste navegador</span><span id="hint">Arraste o fundo para navegar pelo painel</span></footer>
+  <footer><span id="status" role="status">Carregando…</span><span id="hint">Arraste o fundo para navegar pelo painel</span></footer>
 </main>
 <dialog id="addDialog">
   <div class="dialog-head"><h2>Adicionar imagem</h2><button data-close aria-label="Fechar">×</button></div>
@@ -141,6 +142,20 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
     <div class="edit-actions"><button type="button" id="clearCrop">Limpar recorte</button><button type="button" id="rotate">Girar 90°</button><button class="primary">Salvar</button></div>
   </form>
 </dialog>
+<dialog id="syncDialog">
+  <div class="dialog-head"><h2>Sincronização GitHub</h2><button data-close aria-label="Fechar">×</button></div>
+  <p>O painel é compartilhado pelo GitHub. Qualquer pessoa vê o mesmo conteúdo ao acessar o link. Para <strong>salvar alterações</strong>, você precisa de um token de acesso pessoal (PAT) com permissão <code>contents: write</code> no repositório.</p>
+  <p>Visitantes sem token só visualizam — não podem alterar o painel.</p>
+  <form id="syncForm" style="margin-top:14px">
+    <label for="ghPat" style="margin-bottom:6px">Token de acesso pessoal (PAT)</label>
+    <input id="ghPat" type="password" placeholder="github_pat_… ou ghp_…" autocomplete="off">
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button type="submit" class="primary">Salvar token</button>
+      <button type="button" id="clearPat">Remover token</button>
+    </div>
+  </form>
+  <p id="syncMsg" role="status" style="margin-top:10px;min-height:1.4em"></p>
+</dialog>
 <input id="files" type="file" accept="image/*" multiple hidden>
 <input id="backupFile" type="file" accept=".json,application/json" hidden>
 <script>
@@ -155,6 +170,13 @@ const edges = ['left', 'right', 'top', 'bottom'];
 const center = () => ({ x: board.clientWidth / 2, y: board.clientHeight / 2 });
 const bounded = (value, min, max) => Math.max(min, Math.min(max, value));
 const blankCrop = () => [0, 0, 0, 0];
+
+// GitHub persistence constants
+const GH_REPO = 'unifesspa-ascom/moadboard';
+const GH_FILE = 'board-state.json';
+const GH_RAW = `https://raw.githubusercontent.com/${GH_REPO}/main/${GH_FILE}`;
+const GH_API = `https://api.github.com/repos/${GH_REPO}`;
+
 let items = [];
 let mode = 'free';
 let scale = 1;
@@ -163,6 +185,7 @@ let editing;
 let ready = false;
 let gesture;
 let storage;
+let ghSaveTimer;
 
 function announce(message) {
   byId('status').textContent = message;
@@ -177,35 +200,150 @@ function openStorage() {
   });
 }
 
-async function start() {
+function saveLocal(state) {
+  if (!storage) return;
   try {
-    storage = await openStorage();
-    const saved = await new Promise((resolve, reject) => {
-      const request = storage.transaction('state').objectStore('state').get('board');
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-    if (saved) ({ items, mode, scale, offset } = saved);
-    announce('Salvo neste navegador');
+    const tx = storage.transaction('state', 'readwrite');
+    tx.objectStore('state').put(state, 'board');
+  } catch {}
+}
+
+async function compressImage(dataUrl) {
+  if (!dataUrl.startsWith('data:image/')) return dataUrl;
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 800;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.6));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+async function fetchSharedState() {
+  try {
+    const res = await fetch(GH_RAW + '?nocache=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.version !== 1) return null;
+    return data;
   } catch {
-    announce('Armazenamento indisponível. Exporte uma cópia para guardar o painel.');
-  } finally {
-    ready = true;
-    render();
+    return null;
   }
 }
 
-function save() {
-  if (!storage) return;
-  announce('Salvando neste navegador…');
+async function pushToGitHub(state) {
+  const pat = localStorage.getItem('gh-pat');
+  if (!pat) return false;
+  const headers = {
+    Authorization: `token ${pat}`,
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
   try {
-    const transaction = storage.transaction('state', 'readwrite');
-    transaction.objectStore('state').put({ items, mode, scale, offset }, 'board');
-    transaction.oncomplete = () => announce('Salvo neste navegador');
-    transaction.onabort = () => announce('Falha ao salvar. Exporte uma cópia para guardar o painel.');
-  } catch {
-    announce('Falha ao salvar. Exporte uma cópia para guardar o painel.');
+    // 1. Get current ref
+    const refRes = await fetch(`${GH_API}/git/refs/heads/main`, { headers });
+    if (!refRes.ok) throw new Error(`ref ${refRes.status}`);
+    const { object: { sha: commitSha } } = await refRes.json();
+    // 2. Get tree SHA from commit
+    const commitRes = await fetch(`${GH_API}/git/commits/${commitSha}`, { headers });
+    if (!commitRes.ok) throw new Error(`commit ${commitRes.status}`);
+    const { tree: { sha: treeSha } } = await commitRes.json();
+    // 3. Create blob
+    const content = JSON.stringify(state);
+    const blobRes = await fetch(`${GH_API}/git/blobs`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ content, encoding: 'utf-8' })
+    });
+    if (!blobRes.ok) throw new Error(`blob ${blobRes.status}`);
+    const { sha: blobSha } = await blobRes.json();
+    // 4. Create tree
+    const treeRes = await fetch(`${GH_API}/git/trees`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ base_tree: treeSha, tree: [{ path: GH_FILE, mode: '100644', type: 'blob', sha: blobSha }] })
+    });
+    if (!treeRes.ok) throw new Error(`tree ${treeRes.status}`);
+    const { sha: newTreeSha } = await treeRes.json();
+    // 5. Create commit
+    const newCommitRes = await fetch(`${GH_API}/git/commits`, {
+      method: 'POST', headers,
+      body: JSON.stringify({ message: 'atualiza painel de referências', tree: newTreeSha, parents: [commitSha] })
+    });
+    if (!newCommitRes.ok) throw new Error(`newcommit ${newCommitRes.status}`);
+    const { sha: newCommitSha } = await newCommitRes.json();
+    // 6. Update ref
+    const patchRes = await fetch(`${GH_API}/git/refs/heads/main`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ sha: newCommitSha })
+    });
+    if (!patchRes.ok) throw new Error(`patch ${patchRes.status}`);
+    return true;
+  } catch (err) {
+    console.error('GitHub push failed:', err);
+    return false;
   }
+}
+
+async function start() {
+  announce('Carregando painel compartilhado…');
+  const [ghResult] = await Promise.allSettled([
+    fetchSharedState(),
+    openStorage().then(db => { storage = db; })
+  ]);
+  const shared = ghResult.status === 'fulfilled' ? ghResult.value : null;
+  if (shared !== null) {
+    ({ items, mode, scale, offset } = shared);
+    const pat = localStorage.getItem('gh-pat');
+    announce(pat ? 'Sincronizado com GitHub ✓' : 'Painel compartilhado. Configure o token para editar.');
+  } else if (storage) {
+    try {
+      const saved = await new Promise((resolve, reject) => {
+        const req = storage.transaction('state').objectStore('state').get('board');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+      if (saved) {
+        ({ items, mode, scale, offset } = saved);
+        announce('Carregado localmente (GitHub indisponível)');
+      } else {
+        announce('Painel vazio. Configure o token GitHub para habilitar o compartilhamento.');
+      }
+    } catch {
+      announce('Armazenamento local indisponível.');
+    }
+  } else {
+    announce('Sem armazenamento disponível. Exporte uma cópia para guardar o painel.');
+  }
+  ready = true;
+  render();
+}
+
+function save() {
+  const state = { version: 1, items, mode, scale, offset };
+  // Save to IndexedDB immediately (local backup)
+  saveLocal(state);
+  const pat = localStorage.getItem('gh-pat');
+  if (!pat) {
+    announce('Salvo localmente (sem token GitHub)');
+    return;
+  }
+  clearTimeout(ghSaveTimer);
+  announce('Aguardando para sincronizar…');
+  ghSaveTimer = setTimeout(async () => {
+    const latestState = { version: 1, items, mode, scale, offset };
+    announce('Sincronizando com GitHub…');
+    const ok = await pushToGitHub(latestState);
+    announce(ok ? 'Sincronizado com GitHub ✓' : 'Erro ao sincronizar. Verifique o token.');
+  }, 2000);
 }
 
 function proportions(item) {
@@ -423,7 +561,9 @@ async function imageSource(source) {
 async function addSources(sources, dropPoint) {
   if (!ready || !sources.length) return 0;
   const loaded = await Promise.allSettled(sources.map(async source => {
-    const src = await imageSource(source);
+    const rawSrc = await imageSource(source);
+    // Compress local base64 images to keep GitHub state small
+    const src = rawSrc.startsWith('data:image/') ? await compressImage(rawSrc) : rawSrc;
     const ratio = await loadImage(src);
     const caption = typeof source === 'string' ? '' : source.name.replace(/\.[^.]+$/, '').slice(0, 120);
     return { src, ratio, caption };
@@ -710,6 +850,31 @@ byId('backupFile').onchange = async event => {
   } catch {
     alert('Não foi possível importar. Escolha um arquivo exportado pelo moodboard.');
   }
+};
+
+// GitHub sync dialog handlers
+byId('syncBtn').onclick = () => {
+  const pat = localStorage.getItem('gh-pat') || '';
+  byId('ghPat').value = pat ? '••••••••••••••••' : '';
+  byId('syncMsg').textContent = pat ? 'Token configurado.' : '';
+  byId('syncDialog').showModal();
+};
+byId('syncForm').onsubmit = event => {
+  event.preventDefault();
+  const val = byId('ghPat').value.trim();
+  if (!val || val === '••••••••••••••••') {
+    byId('syncMsg').textContent = 'Sem alteração.';
+    return;
+  }
+  localStorage.setItem('gh-pat', val);
+  byId('syncMsg').textContent = 'Token salvo. As próximas edições serão sincronizadas com o GitHub.';
+  byId('ghPat').value = '••••••••••••••••';
+};
+byId('clearPat').onclick = () => {
+  localStorage.removeItem('gh-pat');
+  byId('ghPat').value = '';
+  byId('syncMsg').textContent = 'Token removido. O painel voltará a ser somente leitura.';
+  announce('Sem token GitHub — edições salvas apenas localmente.');
 };
 
 new ResizeObserver(() => {
