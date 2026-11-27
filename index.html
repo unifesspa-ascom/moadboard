@@ -55,7 +55,8 @@ kbd{font:inherit;font-size:.78em;border:1px solid #cecdc1;border-radius:4px;back
 footer{display:flex;justify-content:space-between;gap:12px;padding:.55rem .1rem}
 .card{position:absolute;pointer-events:auto;min-width:0;background:#fffefa;border:1px solid #bdbcae;border-radius:9px;padding:6px;box-shadow:0 3px 10px #25262019;cursor:grab;user-select:none;touch-action:none}
 .card:hover,.card:focus-within{border-color:#627400}
-.card.dragging{z-index:9999!important}
+.card.dragging{z-index:9999!important;opacity:0.5;box-shadow:0 8px 24px #25262040;cursor:grabbing}
+.grip:active,.grid .card.dragging *{cursor:grabbing!important}
 .card.target{outline:3px solid #829900}
 .picture{position:relative;width:100%;overflow:hidden;border-radius:5px;background:#eae9df}
 .picture .crop{position:absolute;top:50%;left:50%;overflow:hidden}
@@ -91,8 +92,6 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
   <div class="brand"><span class="mark" aria-hidden="true">✳</span><div><strong>moodboard<span class="period">.</span></strong><small>UNIFESSPA / PROJETO DE ESTAMPA</small></div></div>
   <div class="actions">
     <button id="syncBtn" title="Configurar sincronização com GitHub">⚙ GitHub</button>
-    <button id="backup" title="Exportar uma cópia do painel">Exportar</button>
-    <button id="restore" title="Importar referências de uma cópia do painel">Importar</button>
   </div>
 </header>
 <section class="intro" aria-labelledby="title">
@@ -101,14 +100,7 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
 </section>
 <main>
   <div class="toolbar">
-    <div class="tabs" aria-label="Visualização">
-      <button id="free" aria-pressed="true">▧ Painel livre</button>
-      <button id="grid" aria-pressed="false">▥ Colunas</button>
-    </div>
     <span id="count">0 referências</span>
-    <div id="zoom" class="zoom" aria-label="Controles do painel">
-      <button id="out" aria-label="Diminuir zoom">−</button><button id="reset" aria-label="Restaurar zoom e posição">100%</button><button id="in" aria-label="Aumentar zoom">+</button><button id="fit" title="Enquadrar referências" aria-label="Enquadrar referências">⛶</button>
-    </div>
   </div>
   <div id="board" aria-label="Painel de referências">
     <div id="layer"></div>
@@ -157,7 +149,6 @@ input[type=range]{display:block;width:100%;accent-color:#637700}
   <p id="syncMsg" role="status" style="margin-top:10px;min-height:1.4em"></p>
 </dialog>
 <input id="files" type="file" accept="image/*" multiple hidden>
-<input id="backupFile" type="file" accept=".json,application/json" hidden>
 <script>
 'use strict';
 
@@ -178,7 +169,7 @@ const GH_RAW = `https://raw.githubusercontent.com/${GH_REPO}/main/${GH_FILE}`;
 const GH_API = `https://api.github.com/repos/${GH_REPO}`;
 
 let items = [];
-let mode = 'free';
+let mode = 'grid';
 let scale = 1;
 let offset = { x: 0, y: 0 };
 let editing;
@@ -318,12 +309,12 @@ async function start() {
 
   if (shared !== null && !ghEmpty) {
     // GitHub tem conteúdo — usa ele
-    ({ items, mode, scale, offset } = shared);
+    ({ items, scale, offset } = shared); mode = 'grid';
     const pat = localStorage.getItem('gh-pat');
     announce(pat ? 'Sincronizado com GitHub ✓' : 'Painel compartilhado. Configure o token para editar.');
   } else if (ghEmpty && localHasItems) {
     // GitHub está vazio mas há conteúdo local — migra automaticamente
-    ({ items, mode, scale, offset } = localSaved);
+    ({ items, scale, offset } = localSaved); mode = 'grid';
     announce('Restaurando fotos do navegador…');
     const pat = localStorage.getItem('gh-pat');
     if (pat) {
@@ -338,7 +329,7 @@ async function start() {
     const pat = localStorage.getItem('gh-pat');
     announce(pat ? 'Painel vazio. Adicione fotos para começar.' : 'Painel compartilhado. Configure o token para editar.');
   } else if (localSaved) {
-    ({ items, mode, scale, offset } = localSaved);
+    ({ items, scale, offset } = localSaved); mode = 'grid';
     announce('Carregado localmente (GitHub indisponível)');
   } else {
     announce('Sem armazenamento disponível. Exporte uma cópia para guardar o painel.');
@@ -409,6 +400,32 @@ function button(label, title, action) {
   return element;
 }
 
+function downloadItem(item) {
+  const src = item.src;
+  const name = (item.caption || 'referencia').replace(/[^a-z0-9]/gi, '_').slice(0, 60) || 'referencia';
+  if (src.startsWith('data:')) {
+    const mime = src.split(';')[0].split(':')[1] || 'image/jpeg';
+    const ext = mime.split('/')[1].replace('jpeg', 'jpg') || 'jpg';
+    const link = document.createElement('a');
+    link.href = src;
+    link.download = name + '.' + ext;
+    link.click();
+  } else {
+    fetch(src, { mode: 'cors', credentials: 'omit' })
+      .then(r => r.ok ? r.blob() : Promise.reject())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+        link.href = url;
+        link.download = name + '.' + ext;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      })
+      .catch(() => window.open(src, '_blank', 'noopener'));
+  }
+}
+
 function card(item, index) {
   const element = document.createElement('article');
   element.className = 'card';
@@ -436,6 +453,7 @@ function card(item, index) {
     };
     bar.prepend(grip);
   }
+  bar.append(button('⬇', 'Baixar imagem', () => downloadItem(item)));
   bar.append(button('✎', 'Editar referência', () => openEditor(item)));
   bar.append(button('×', 'Remover referência', () => {
     if (!confirm('Remover esta referência do painel?')) return;
@@ -471,19 +489,15 @@ function place(element, item) {
 function positionLayer() {
   layer.style.transform = mode === 'free'
     ? 'translate(' + offset.x + 'px, ' + offset.y + 'px) scale(' + scale + ')' : '';
-  byId('reset').textContent = Math.round(scale * 100) + '%';
   board.style.backgroundPosition = mode === 'free' ? offset.x + 'px ' + offset.y + 'px' : '';
 }
 
 function render() {
   const grid = mode === 'grid';
   board.classList.toggle('grid', grid);
-  byId('free').setAttribute('aria-pressed', String(!grid));
-  byId('grid').setAttribute('aria-pressed', String(grid));
-  byId('zoom').hidden = grid;
   byId('empty').hidden = items.length > 0;
   byId('count').textContent = items.length + (items.length === 1 ? ' referência' : ' referências');
-  byId('hint').textContent = grid ? 'Arraste pelo ícone ⠿ para reordenar' : 'Arraste o fundo para navegar pelo painel';
+  byId('hint').textContent = 'Arraste pelo ícone ⠿ para reordenar';
   layer.replaceChildren();
   if (grid) {
     const count = bounded(Math.floor(board.clientWidth / 240), 1, 5);
@@ -713,17 +727,6 @@ byId('files').onchange = event => {
   event.target.value = '';
   void addFiles(files);
 };
-byId('free').onclick = () => setMode('free');
-byId('grid').onclick = () => setMode('grid');
-byId('in').onclick = () => { zoom(1.25); save(); };
-byId('out').onclick = () => { zoom(.8); save(); };
-byId('fit').onclick = fit;
-byId('reset').onclick = () => {
-  scale = 1;
-  offset = { x: 0, y: 0 };
-  positionLayer();
-  save();
-};
 document.querySelectorAll('[data-close]').forEach(control => {
   control.onclick = () => control.closest('dialog').close();
 });
@@ -828,49 +831,6 @@ byId('editForm').onsubmit = event => {
   save();
 };
 
-byId('backup').onclick = () => {
-  if (!ready) return;
-  const blob = new Blob([JSON.stringify({ version: 1, items })], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'moodboard-calourada-2027.json';
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-};
-
-function validItem(item) {
-  return item && typeof item.src === 'string' && /^(https?:\/\/|data:image\/)/i.test(item.src)
-    && typeof item.caption === 'string' && ['x', 'y', 'z', 'width', 'ratio'].every(key => Number.isFinite(item[key]))
-    && item.width > 0 && item.ratio > 0 && [0, 90, 180, 270].includes(item.angle)
-    && Array.isArray(item.crop) && item.crop.length === 4
-    && item.crop.every(value => Number.isInteger(value) && value >= 0 && value <= 95)
-    && item.crop[0] + item.crop[1] <= 95 && item.crop[2] + item.crop[3] <= 95;
-}
-
-byId('restore').onclick = () => { if (ready) byId('backupFile').click(); };
-byId('backupFile').onchange = async event => {
-  const [file] = event.target.files;
-  event.target.value = '';
-  if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    if (data.version !== 1 || !Array.isArray(data.items) || !data.items.every(validItem)) {
-      throw new Error('Formato inválido');
-    }
-    const highest = items.reduce((value, item) => Math.max(value, item.z), 0);
-    const stacking = [...data.items].sort((a, b) => a.z - b.z);
-    items = items.concat(data.items.map(item => ({
-      src: item.src, caption: item.caption.slice(0, 120), ratio: item.ratio, crop: item.crop, angle: item.angle,
-      x: item.x, y: item.y, width: item.width, id: crypto.randomUUID(), z: highest + stacking.indexOf(item) + 1
-    })));
-    render();
-    if (mode === 'free') fit();
-    else save();
-  } catch {
-    alert('Não foi possível importar. Escolha um arquivo exportado pelo moodboard.');
-  }
-};
 
 // GitHub sync dialog handlers
 byId('syncBtn').onclick = () => {
